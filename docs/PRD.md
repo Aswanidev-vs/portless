@@ -541,7 +541,7 @@ devdns
 Example:
 
 ```
-github.com/ivintitus/portless
+github.com/ivin-titus/portless
 ```
 
 ---

@@ -1,0 +1,18 @@
+# Binaries
+portless
+*.test
+
+# Editor/IDE
+.vscode/
+.idea/
+
+# Local configuration & environment
+.env
+portless.yaml
+
+# Sockets and temporary files
+*.sock
+/tmp/
+
+# OS Specific
+.DS_Store
