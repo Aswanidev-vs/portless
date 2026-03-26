@@ -1,0 +1,37 @@
+# HTTPS with Auto Certificates Example
+# Automated Let's Encrypt certificate issuance
+
+version: 1
+
+auth:
+  token: ${GOTUNNEL_TOKEN}
+
+relay:
+  broker_url: https://relay.example.com
+  region: us-east-1
+
+# ACME Configuration
+acme:
+  email: admin@example.com
+  directory_url: https://acme-v02.api.letsencrypt.org/directory
+  renewal_window: 720h  # Renew 30 days before expiry
+  max_retries: 5
+  preferred_challenge: dns-01
+
+# DNS Provider for DNS-01 Challenges
+dns:
+  providers:
+    - name: cloudflare
+      type: cloudflare
+      credentials:
+        api_token: ${CLOUDFLARE_API_TOKEN}
+      zones:
+        - example.com
+
+tunnels:
+  - name: web
+    protocol: http
+    local_url: http://localhost:8080
+    subdomain: api
+    https: auto  # Enable automatic HTTPS
+    inspect: true

@@ -1,0 +1,55 @@
+# Multi-Provider DNS Setup Example
+# Cloudflare + Route53 + Google Cloud DNS for redundancy
+
+version: 1
+
+auth:
+  token: ${GOTUNNEL_TOKEN}
+
+relay:
+  broker_url: https://relay.example.com
+  region: us-east-1
+
+acme:
+  email: admin@example.com
+  preferred_challenge: dns-01
+
+dns:
+  providers:
+    # Primary: Cloudflare
+    - name: cloudflare
+      type: cloudflare
+      credentials:
+        api_token: ${CLOUDFLARE_API_TOKEN}
+      zones:
+        - example.com
+        - example.org
+      priority: 1
+
+    # Secondary: Route53
+    - name: route53
+      type: route53
+      credentials:
+        access_key_id: ${AWS_ACCESS_KEY_ID}
+        secret_access_key: ${AWS_SECRET_ACCESS_KEY}
+        region: us-east-1
+      zones:
+        - example.com
+      priority: 2
+
+    # Tertiary: Google Cloud DNS
+    - name: gcp-dns
+      type: gcp
+      credentials:
+        project_id: ${GCP_PROJECT_ID}
+        service_account_key: ${GCP_SERVICE_ACCOUNT_KEY}
+      zones:
+        - example-net
+      priority: 3
+
+tunnels:
+  - name: web
+    protocol: http
+    local_url: http://localhost:3000
+    subdomain: app
+    https: auto

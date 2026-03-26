@@ -1,0 +1,422 @@
+# GoTunnel Enterprise Configuration
+# This configuration enables all enterprise-grade features
+
+version: 1
+
+# Authentication Configuration
+auth:
+  token: env:GOTUNNEL_TOKEN
+  # Enterprise Auth Settings
+  session_timeout: 24h
+  max_concurrent_sessions: 5
+  require_mfa: false  # Set to true to enforce MFA for all users
+  password_policy:
+    min_length: 12
+    require_uppercase: true
+    require_lowercase: true
+    require_numbers: true
+    require_special: true
+
+# Relay Configuration
+relay:
+  broker_url: env:BROKER_URL
+  region: env:GOTUNNEL_REGION
+  # Transport Settings
+  transport:
+    protocol: auto  # "quic", "http2", "auto"
+    quic:
+      enabled: true
+      max_idle_timeout: 30s
+      max_stream_data: 1048576  # 1MB
+    http2:
+      enabled: true
+      max_concurrent_streams: 256
+  # Multiplexing Settings
+  multiplexing:
+    max_streams: 1000
+    window_size: 65535
+    delivery_mode: at_least_once  # "at_most_once", "at_least_once", "exactly_once"
+
+# Tunnel Definitions
+tunnels:
+  - name: web-app
+    protocol: http
+    local_url: http://localhost:3000
+    subdomain: myapp
+    inspect: true
+    https: auto
+    production: false
+    allow_sharing: true
+    labels:
+      - web
+      - development
+
+  - name: api-server
+    protocol: http
+    local_url: http://localhost:8080
+    subdomain: api
+    inspect: true
+    https: auto
+    production: true
+    allow_sharing: false
+    webhook_url: env:WEBHOOK_URL
+    labels:
+      - api
+      - production
+
+  - name: postgres
+    protocol: tcp
+    local_url: localhost:5432
+    labels:
+      - database
+
+  - name: redis
+    protocol: tcp
+    local_url: localhost:6379
+    labels:
+      - cache
+
+# Security Policies
+security:
+  # Network Security
+  network:
+    allowed_cidrs:
+      - 0.0.0.0/0  # Allow all (restrict in production)
+    blocked_cidrs: []
+    allowed_ports:
+      - 80
+      - 443
+      - 8080
+    blocked_ports:
+      - 22
+      - 3389
+    max_connections: 10000
+    timeout: 30s
+
+  # TLS Security
+  tls:
+    min_version: "1.2"
+    max_version: "1.3"
+    cipher_suites:
+      - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+      - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+      - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+      - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+    require_client_cert: false
+    allowed_cns: []
+    allowed_sans: []
+
+  # Rate Limiting
+  rate_limit:
+    enabled: true
+    requests_per_second: 100
+    burst_size: 200
+    window_size: 1m
+    key_field: ip  # "ip", "user", "tunnel"
+
+  # Audit Logging
+  audit:
+    log_all_requests: true
+    log_failed_auth: true
+    log_policy_violations: true
+    retain_days: 90
+    exclude_fields:
+      - password
+      - token
+      - secret
+
+# Certificate Management (ACME)
+acme:
+  email: env:ACME_EMAIL
+  directory_url: https://acme-v02.api.letsencrypt.org/directory
+  # Use staging for testing:
+  # directory_url: https://acme-staging-v02.api.letsencrypt.org/directory
+  renewal_window: 720h  # 30 days before expiry
+  max_retries: 5
+  retry_backoff: 5m
+  # Challenge Types
+  preferred_challenge: dns-01  # "http-01", "dns-01", "tls-alpn-01"
+  # Storage
+  storage:
+    type: file  # "file", "database", "vault"
+    path: ./certs
+    encrypted: true
+
+# DNS Providers
+dns:
+  providers:
+    # Cloudflare Provider
+    - name: cloudflare
+      type: cloudflare
+      enabled: true
+      credentials:
+        api_token: env:CLOUDFLARE_API_TOKEN
+      zones:
+        - example.com
+        - example.org
+
+    # AWS Route53 Provider
+    - name: route53
+      type: route53
+      enabled: false
+      credentials:
+        access_key_id: env:AWS_ACCESS_KEY_ID
+        secret_access_key: env:AWS_SECRET_ACCESS_KEY
+        region: us-east-1
+      zones:
+        - example.com
+
+    # Google Cloud DNS Provider
+    - name: gcp-dns
+      type: gcp
+      enabled: false
+      credentials:
+        project_id: env:GCP_PROJECT_ID
+        service_account_key: env:GCP_SERVICE_ACCOUNT_KEY
+      zones:
+        - example-com
+
+    # Azure DNS Provider
+    - name: azure-dns
+      type: azure
+      enabled: false
+      credentials:
+        subscription_id: env:AZURE_SUBSCRIPTION_ID
+        tenant_id: env:AZURE_TENANT_ID
+        client_id: env:AZURE_CLIENT_ID
+        client_secret: env:AZURE_CLIENT_SECRET
+      zones:
+        - example.com
+
+    # Manual DNS (default)
+    - name: manual
+      type: manual
+      enabled: true
+
+# State Replication
+state:
+  replication:
+    enabled: true
+    node_id: env:NODE_ID
+    nodes:
+      - node1.example.com:8080
+      - node2.example.com:8080
+      - node3.example.com:8080
+    heartbeat_interval: 1s
+    election_timeout: 5s
+    sync_timeout: 30s
+    max_log_entries: 10000
+    snapshot_interval: 1000
+  # Storage Backend
+  storage:
+    type: postgresql  # "memory", "postgresql", "redis"
+    dsn: env:DATABASE_URL
+    max_connections: 100
+    max_idle_connections: 10
+    connection_lifetime: 5m
+
+# NFR Validation
+nfr:
+  enabled: true
+  requirements:
+    - id: latency-p99
+      type: latency
+      name: P99 Latency
+      description: End-to-end latency at 99th percentile
+      threshold: 100
+      unit: ms
+
+    - id: uptime-monthly
+      type: uptime
+      name: Monthly Uptime
+      description: Service availability percentage
+      threshold: 99.9
+      unit: percent
+
+    - id: tunnel-establishment
+      type: latency
+      name: Tunnel Establishment
+      description: Time to establish tunnel connection
+      threshold: 3000
+      unit: ms
+
+    - id: concurrent-tunnels
+      type: scalability
+      name: Concurrent Tunnels
+      description: Maximum concurrent tunnel capacity
+      threshold: 10000
+      unit: tunnels
+
+    - id: recovery-time
+      type: recovery
+      name: Recovery Time
+      description: Time to recover from node failure
+      threshold: 30
+      unit: seconds
+
+# Operational Hardening
+ops:
+  # Health Checks
+  health:
+    enabled: true
+    interval: 30s
+    timeout: 5s
+  # Readiness Probes
+  readiness:
+    enabled: true
+    checks:
+      - name: database
+        timeout: 5s
+      - name: redis
+        timeout: 5s
+      - name: acme
+        timeout: 10s
+  # Liveness Probes
+  liveness:
+    enabled: true
+    checks:
+      - name: memory
+        timeout: 5s
+      - name: goroutines
+        timeout: 5s
+  # Circuit Breakers
+  circuit_breaker:
+    enabled: true
+    default:
+      failure_threshold: 5
+      success_threshold: 3
+      timeout: 60s
+  # Graceful Shutdown
+  shutdown:
+    timeout: 30s
+    drain_timeout: 10s
+
+# Observability
+observability:
+  # Metrics
+  metrics:
+    enabled: true
+    endpoint: /metrics
+    prometheus:
+      enabled: true
+      namespace: gotunnel
+    # Custom Metrics
+    custom:
+      - name: tunnel_establishment_duration
+        type: histogram
+        help: Time to establish a tunnel connection
+        buckets: [0.1, 0.5, 1, 2, 3, 5]
+
+  # Tracing
+  tracing:
+    enabled: true
+    sampler: always_on  # "always_on", "always_off", "probabilistic"
+    probability: 1.0
+    exporters:
+      - type: jaeger
+        endpoint: env:JAEGER_ENDPOINT
+      - type: otlp
+        endpoint: env:OTLP_ENDPOINT
+
+  # Logging
+  logging:
+    level: info  # "debug", "info", "warn", "error"
+    format: json  # "json", "text"
+    output: stdout  # "stdout", "file", "both"
+    file:
+      path: ./logs/gotunnel.log
+      max_size: 100  # MB
+      max_age: 7  # days
+      max_backups: 10
+      compress: true
+
+# Dashboard
+dashboard:
+  enabled: true
+  bind_address: :8081
+  # Authentication
+  auth:
+    enabled: true
+    session_timeout: 8h
+    # Static credentials (for simple deployments)
+    username: env:DASHBOARD_USERNAME
+    password_hash: env:DASHBOARD_PASSWORD_HASH
+    # Or use enterprise auth
+    use_enterprise_auth: false
+  # TLS
+  tls:
+    enabled: true
+    cert_file: env:DASHBOARD_CERT_FILE
+    key_file: env:DASHBOARD_KEY_FILE
+
+# Webhooks
+webhooks:
+  enabled: true
+  # Global webhook endpoint
+  endpoint: env:WEBHOOK_ENDPOINT
+  # Signing secret for payload verification
+  signing_secret: env:WEBHOOK_SIGNING_SECRET
+  # Events to subscribe
+  events:
+    - tunnel.created
+    - tunnel.started
+    - tunnel.stopped
+    - certificate.issued
+    - certificate.renewed
+    - certificate.renewal_failed
+    - session.started
+    - auth.failure
+  # Retry settings
+  retry:
+    max_attempts: 3
+    backoff: 5s
+
+# Plugins
+plugins:
+  enabled: true
+  directory: ./plugins
+  # Plugin configurations
+  configs:
+    - name: slack-notifications
+      enabled: false
+      config:
+        webhook_url: env:SLACK_WEBHOOK_URL
+        channel: "#gotunnel-alerts"
+
+    - name: datadog-metrics
+      enabled: false
+      config:
+        api_key: env:DATADOG_API_KEY
+        site: datadoghq.com
+
+# Resource Limits
+resources:
+  # Memory limits
+  memory:
+    max_heap_size: 4GB
+    gc_percent: 100
+  # Connection limits
+  connections:
+    max_per_tunnel: 1000
+    max_total: 10000
+    idle_timeout: 300s
+  # File descriptor limits
+  file_descriptors:
+    soft_limit: 65536
+    hard_limit: 65536
+
+# Backup and Recovery
+backup:
+  enabled: true
+  schedule: "0 */6 * * *"  # Every 6 hours
+  retention:
+    daily: 7
+    weekly: 4
+    monthly: 12
+  storage:
+    type: s3  # "s3", "gcs", "azure", "local"
+    bucket: env:BACKUP_BUCKET
+    path: gotunnel/backups
+    credentials:
+      access_key: env:BACKUP_ACCESS_KEY
+      secret_key: env:BACKUP_SECRET_KEY

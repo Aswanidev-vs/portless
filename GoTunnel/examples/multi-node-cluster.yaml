@@ -1,0 +1,32 @@
+# Multi-Node Cluster Example
+# High availability setup with automatic failover
+
+version: 1
+
+auth:
+  token: ${GOTUNNEL_TOKEN}
+
+relay:
+  broker_url: https://relay.example.com
+  region: us-east-1
+
+state:
+  replication:
+    enabled: true
+    node_id: ${NODE_ID}
+    nodes:
+      - node1.example.com:8080
+      - node2.example.com:8080
+      - node3.example.com:8080
+    heartbeat_interval: 1s
+    election_timeout: 5s
+    sync_timeout: 30s
+    max_log_entries: 10000
+    snapshot_interval: 1000
+
+tunnels:
+  - name: web
+    protocol: http
+    local_url: http://localhost:3000
+    subdomain: app
+    https: auto

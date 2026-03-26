@@ -1,0 +1,19 @@
+version: 1
+auth:
+  token: env:GOTUNNEL_TOKEN
+relay:
+  broker_url: http://127.0.0.1:8090
+  region: local
+  plugin_config: ./plugins.example.json
+tunnels:
+  - name: app
+    protocol: http
+    local_url: http://127.0.0.1:3000
+    region: local
+    subdomain: app
+    inspect: true
+    https: auto
+    production: false
+    allow_sharing: true
+    labels:
+      - dev

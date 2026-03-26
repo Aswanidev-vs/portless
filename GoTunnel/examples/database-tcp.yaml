@@ -1,0 +1,38 @@
+# TCP Tunnel for Databases Example
+# Secure database access with network restrictions
+
+version: 1
+
+auth:
+  token: ${GOTUNNEL_TOKEN}
+
+relay:
+  broker_url: https://relay.example.com
+  region: us-east-1
+
+security:
+  network:
+    allowed_cidrs:
+      - 10.0.0.0/8      # Corporate network
+      - 192.168.1.0/24   # VPN
+    blocked_cidrs:
+      - 0.0.0.0/0        # Block all by default
+  tls:
+    min_version: "1.3"
+    require_client_cert: true
+
+tunnels:
+  - name: postgres
+    protocol: tcp
+    local_url: localhost:5432
+    inspect: false  # Don't log database queries
+
+  - name: redis
+    protocol: tcp
+    local_url: localhost:6379
+    inspect: false
+
+  - name: mongodb
+    protocol: tcp
+    local_url: localhost:27017
+    inspect: false

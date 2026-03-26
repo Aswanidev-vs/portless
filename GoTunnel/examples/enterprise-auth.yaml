@@ -1,0 +1,27 @@
+# Enterprise Authentication Example
+# RBAC + MFA + SSO Configuration
+
+version: 1
+
+auth:
+  token: ${GOTUNNEL_TOKEN}
+  session_timeout: 24h
+  max_concurrent_sessions: 5
+  require_mfa: true  # Enforce MFA for all users
+  password_policy:
+    min_length: 12
+    require_uppercase: true
+    require_lowercase: true
+    require_numbers: true
+    require_special: true
+
+relay:
+  broker_url: https://relay.example.com
+  region: us-east-1
+
+tunnels:
+  - name: web
+    protocol: http
+    local_url: http://localhost:3000
+    subdomain: app
+    https: auto

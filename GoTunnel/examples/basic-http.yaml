@@ -1,0 +1,18 @@
+# Basic HTTP Tunnel Example
+# Simple local development setup
+
+version: 1
+
+auth:
+  token: ${GOTUNNEL_TOKEN}
+
+relay:
+  broker_url: https://relay.example.com
+  region: us-east-1
+
+tunnels:
+  - name: web
+    protocol: http
+    local_url: http://localhost:3000
+    subdomain: myapp
+    inspect: true

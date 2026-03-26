@@ -1,0 +1,20 @@
+{
+  "plugins": [
+    {
+      "name": "production_guard",
+      "type": "policy",
+      "enabled": true,
+      "config": {
+        "allow_production_sharing": "false"
+      }
+    },
+    {
+      "name": "audit_labels",
+      "type": "metadata",
+      "enabled": true,
+      "config": {
+        "label": "team:core"
+      }
+    }
+  ]
+}

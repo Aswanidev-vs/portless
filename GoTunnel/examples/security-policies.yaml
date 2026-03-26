@@ -1,0 +1,74 @@
+# Security Policies Example
+# Network, TLS, and rate limiting configuration
+
+version: 1
+
+auth:
+  token: ${GOTUNNEL_TOKEN}
+
+relay:
+  broker_url: https://relay.example.com
+  region: us-east-1
+
+security:
+  # Network Security
+  network:
+    allowed_cidrs:
+      - 10.0.0.0/8       # Corporate network
+      - 172.16.0.0/12    # VPN
+      - 192.168.0.0/16   # Home office
+    blocked_cidrs:
+      - 1.2.3.0/24       # Known malicious IPs
+    allowed_ports:
+      - 80
+      - 443
+      - 8080
+    blocked_ports:
+      - 22               # SSH
+      - 3389             # RDP
+    max_connections: 10000
+    timeout: 30s
+
+  # TLS Security
+  tls:
+    min_version: "1.3"
+    max_version: "1.3"
+    cipher_suites:
+      - TLS_AES_256_GCM_SHA384
+      - TLS_CHACHA20_POLY1305_SHA256
+      - TLS_AES_128_GCM_SHA256
+    require_client_cert: false
+    allowed_cns:
+      - "*.example.com"
+      - "api.example.com"
+    allowed_sans:
+      - "example.com"
+      - "*.example.com"
+
+  # Rate Limiting
+  rate_limit:
+    enabled: true
+    requests_per_second: 100
+    burst_size: 200
+    window_size: 1m
+    key_field: ip  # or "user", "tunnel"
+
+  # Audit Logging
+  audit:
+    log_all_requests: true
+    log_failed_auth: true
+    log_policy_violations: true
+    retain_days: 90
+    exclude_fields:
+      - password
+      - token
+      - secret
+      - authorization
+
+tunnels:
+  - name: web
+    protocol: http
+    local_url: http://localhost:3000
+    subdomain: app
+    https: auto
+    production: true  # Enable stricter security

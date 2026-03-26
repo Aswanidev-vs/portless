@@ -1,0 +1,21 @@
+# Collaborative Debugging Example
+# Multi-user debugging sessions with shared breakpoints
+
+version: 1
+
+auth:
+  token: ${GOTUNNEL_TOKEN}
+
+relay:
+  broker_url: https://relay.example.com
+  region: us-east-1
+
+tunnels:
+  - name: web
+    protocol: http
+    local_url: http://localhost:3000
+    subdomain: app
+    https: auto
+    inspect: true
+    allow_sharing: true  # Enable collaborative sessions
+    production: false    # Allow mutations in dev

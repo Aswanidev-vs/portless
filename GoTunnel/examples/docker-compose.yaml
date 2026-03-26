@@ -1,0 +1,101 @@
+# Docker Compose Example
+# Complete GoTunnel deployment with PostgreSQL and Redis
+
+version: '3.8'
+
+services:
+  gotunnel:
+    image: gotunnel:latest
+    container_name: gotunnel
+    ports:
+      - "8080:8080"   # Relay
+      - "8443:8443"   # HTTPS
+      - "9090:9090"   # Metrics
+    environment:
+      - GOTUNNEL_TOKEN=${GOTUNNEL_TOKEN}
+      - ACME_EMAIL=${ACME_EMAIL}
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+      - DATABASE_URL=postgres://gotunnel:${DB_PASSWORD}@postgres:5432/gotunnel?sslmode=disable
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./config:/etc/gotunnel
+      - ./certs:/var/lib/gotunnel/certs
+      - ./data:/var/lib/gotunnel/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: gotunnel-postgres
+    environment:
+      - POSTGRES_DB=gotunnel
+      - POSTGRES_USER=gotunnel
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gotunnel"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: gotunnel-redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: gotunnel-prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    ports:
+      - "9091:9090"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: gotunnel-grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  default:
+    name: gotunnel-network
